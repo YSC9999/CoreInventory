@@ -3,38 +3,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-// --- Enums ---
-enum Role {
-  ADMIN
-  USER
-}
-
-enum TransactionType {
-  IN
-  OUT
-  TRANSFER
-  ADJUSTMENT
-}
-
-enum OperationStatus {
-  DRAFT
-  WAITING
-  READY
-  DONE
-  CANCELED
-}
-
-enum UnitOfMeasure {
-  UNIT
-  KG
-  LITRE
-  BOX
-  METRE
-}
+// --- Enums (as String for SQLite compatibility) ---
+// enum Role { ADMIN, USER }
+// enum TransactionType { IN, OUT, TRANSFER, ADJUSTMENT }
+// enum OperationStatus { DRAFT, WAITING, READY, DONE, CANCELED }
+// enum UnitOfMeasure { UNIT, KG, LITRE, BOX, METRE }
 
 // --- Organization & Users ---
 model Organization {
@@ -53,7 +30,7 @@ model User {
   email          String       @unique
   name           String?
   password       String
-  role           Role         @default(USER)
+  role           String       @default("WAREHOUSE_STAFF") // SUPER_ADMIN, MANAGER, WAREHOUSE_STAFF
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   verified       Boolean      @default(false)
@@ -107,7 +84,7 @@ model Item {
   sku            String
   name           String
   description    String?
-  uom            UnitOfMeasure  @default(UNIT)
+  uom            String         @default("UNIT") // UNIT, KG, LITRE, BOX, METRE
   minStock       Int            @default(0)
   categoryId     String?
   category       Category?      @relation(fields: [categoryId], references: [id])
@@ -143,7 +120,7 @@ model Receipt {
   warehouseId String?
   warehouse   Warehouse?      @relation(fields: [warehouseId], references: [id])
   scheduledAt DateTime?
-  status      OperationStatus @default(DRAFT)
+  status      String          @default("DRAFT") // DRAFT, WAITING, READY, DONE, CANCELED
   notes       String?
   createdById String
   createdBy   User            @relation(fields: [createdById], references: [id])
@@ -168,7 +145,7 @@ model Delivery {
   reference   String          @unique
   destination String
   scheduledAt DateTime?
-  status      OperationStatus @default(DRAFT)
+  status      String          @default("DRAFT") // DRAFT, WAITING, READY, DONE, CANCELED
   notes       String?
   createdById String
   createdBy   User            @relation(fields: [createdById], references: [id])
@@ -192,7 +169,7 @@ model Transaction {
   reference      String
   itemId         String
   item           Item            @relation(fields: [itemId], references: [id])
-  type           TransactionType
+  type           String // IN, OUT, TRANSFER, ADJUSTMENT
   quantity       Int
   fromLocationId String?
   fromLocation   Location?       @relation("FromLocation", fields: [fromLocationId], references: [id])
