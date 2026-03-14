@@ -1,0 +1,153 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* === PREMIUM INDIGO PALETTE === */
+    --background: 232 40% 95%;        /* soft periwinkle-white */
+    --foreground: 234 35% 14%;        /* deep navy text */
+    --border: 232 30% 86%;            /* blue-tinted border */
+
+    --card: 0 0% 100%;                /* pure white cards */
+    --card-foreground: 234 35% 14%;
+    
+    /* Deep midnight navy sidebar */
+    --sidebar-background: 237 45% 8%;
+    --sidebar-foreground: 230 30% 78%;
+    --sidebar-border: 237 35% 14%;
+    --sidebar-primary: 246 90% 68%;    /* electric indigo */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 237 35% 14%;
+    --sidebar-accent-foreground: 230 25% 88%;
+    --sidebar-ring: 246 90% 68%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 234 35% 14%;
+    
+    --primary: 246 90% 62%;           /* vivid electric indigo */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 232 35% 91%;
+    --secondary-foreground: 234 30% 25%;
+    
+    --muted: 232 30% 93%;
+    --muted-foreground: 232 15% 52%;
+    
+    --accent: 270 85% 60%;            /* vibrant violet */
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 84% 58%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --input: 232 25% 87%;
+    --ring: 246 90% 62%;
+    
+    --font-family: 'Inter', 'Outfit';
+    --font-display: 'Outfit';
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 246 10% 8%;
+    --foreground: 0 0% 100%;
+    --card: 246 15% 15%;
+    --card-foreground: 0 0% 100%;
+    --popover: 246 15% 15%;
+    --popover-foreground: 0 0% 100%;
+    --muted: 246 15% 25%;
+    --muted-foreground: 246 10% 65%;
+    --accent: 246 90% 72%;
+    --accent-foreground: 246 10% 8%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 246 10% 8%;
+    --border: 246 15% 25%;
+    --input: 246 15% 25%;
+    --ring: 246 90% 62%;
+    --primary: 246 90% 62%;
+    --primary-foreground: 246 10% 8%;
+    --secondary: 270 85% 60%;
+    --secondary-foreground: 246 10% 8%;
+    --sidebar-background: 237 45% 12%;
+    --sidebar-foreground: 230 30% 78%;
+    --sidebar-primary: 246 90% 68%;
+    --sidebar-primary-foreground: 237 45% 8%;
+    --sidebar-accent: 237 35% 25%;
+    --sidebar-accent-foreground: 230 25% 88%;
+    --sidebar-border: 237 35% 25%;
+    --sidebar-ring: 246 90% 62%;
+  }
+  * {
+    /* border-border removed - using CSS variables instead */
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground selection:bg-primary/20 selection:text-primary;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer utilities {
+  /* Gradient page background */
+  body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% -20%, hsl(246 90% 62% / 0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 120%, hsl(270 85% 60% / 0.07) 0%, transparent 60%);
+    background-attachment: fixed;
+  }
+
+  /* Glass cards */
+  .glass-panel {
+    @apply bg-white/95 backdrop-blur-xl border border-white/80 shadow-md;
+    background: linear-gradient(145deg, rgba(255,255,255,0.98) 0%, rgba(248,249,255,0.95) 100%);
+  }
+
+  /* Neon glow */
+  .neon-glow {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.35), 0 0 50px hsl(var(--primary) / 0.12);
+  }
+  .neon-text-glow {
+    text-shadow: 0 0 15px hsl(var(--primary) / 0.5);
+  }
+
+  /* Data grid bg */
+  .data-grid-bg {
+    background-image:
+      linear-gradient(hsl(246 90% 62% / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(246 90% 62% / 0.06) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+
+  /* 3D card */
+  .card-3d {
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  /* Sidebar glow line */
+  .sidebar-glow {
+    box-shadow: inset -1px 0 0 hsl(246 90% 62% / 0.15), 4px 0 30px hsl(246 90% 62% / 0.08);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  input[type="search"]::-webkit-search-cancel-button {
+    @apply hidden;
+  }
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+}
