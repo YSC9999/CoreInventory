@@ -7,49 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Item {
-  id          String        @id @default(cuid())
-  sku         String        @unique
-  name        String
-  description String?
-  quantity    Int           @default(0)
-  locationId  String?
-  location    Location?     @relation(fields: [locationId], references: [id])
-  transactions Transaction[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-}
-
-model Location {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  address   String?
-  items     Item[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Transaction {
-  id        String          @id @default(cuid())
-  itemId    String
-  item      Item            @relation(fields: [itemId], references: [id])
-  type      TransactionType
-  quantity  Int
-  notes     String?
-  createdAt DateTime        @default(now())
-  createdBy String
-}
-
+// --- Enums ---
 enum Role {
   ADMIN
   USER
@@ -58,5 +16,184 @@ enum Role {
 enum TransactionType {
   IN
   OUT
+  TRANSFER
   ADJUSTMENT
+}
+
+enum OperationStatus {
+  DRAFT
+  WAITING
+  READY
+  DONE
+  CANCELED
+}
+
+enum UnitOfMeasure {
+  UNIT
+  KG
+  LITRE
+  BOX
+  METRE
+}
+
+// --- Organization & Users ---
+model Organization {
+  id         String      @id @default(cuid())
+  name       String
+  inviteCode String      @unique
+  users      User[]
+  warehouses Warehouse[]
+  items      Item[]
+  categories Category[]
+  createdAt  DateTime    @default(now())
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  name           String?
+  password       String
+  role           Role         @default(USER)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  verified       Boolean      @default(false)
+  receipts       Receipt[]
+  deliveries     Delivery[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// --- Warehouse Infrastructure ---
+model Warehouse {
+  id             String       @id @default(cuid())
+  name           String
+  shortCode      String
+  address        String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  locations      Location[]
+  createdAt      DateTime     @default(now())
+
+  @@unique([shortCode, organizationId])
+}
+
+model Location {
+  id          String        @id @default(cuid())
+  name        String
+  shortCode   String
+  warehouseId String
+  warehouse   Warehouse     @relation(fields: [warehouseId], references: [id])
+  stocks      Stock[]
+  fromTxns    Transaction[] @relation("FromLocation")
+  toTxns      Transaction[] @relation("ToLocation")
+
+  @@unique([shortCode, warehouseId])
+}
+
+// --- Products & Inventory ---
+model Category {
+  id             String       @id @default(cuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  items          Item[]
+
+  @@unique([name, organizationId])
+}
+
+model Item {
+  id             String         @id @default(cuid())
+  sku            String
+  name           String
+  description    String?
+  uom            UnitOfMeasure  @default(UNIT)
+  minStock       Int            @default(0)
+  categoryId     String?
+  category       Category?      @relation(fields: [categoryId], references: [id])
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  stocks         Stock[]
+  receiptLines   ReceiptLine[]
+  deliveryLines  DeliveryLine[]
+  transactions   Transaction[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([sku, organizationId])
+}
+
+model Stock {
+  id         String   @id @default(cuid())
+  itemId     String
+  item       Item     @relation(fields: [itemId], references: [id])
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+  quantity   Int      @default(0)
+
+  @@unique([itemId, locationId])
+}
+
+// --- Receipts (Incoming) ---
+model Receipt {
+  id          String          @id @default(cuid())
+  reference   String          @unique
+  supplier    String
+  scheduledAt DateTime?
+  status      OperationStatus @default(DRAFT)
+  notes       String?
+  createdById String
+  createdBy   User            @relation(fields: [createdById], references: [id])
+  lines       ReceiptLine[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model ReceiptLine {
+  id               String  @id @default(cuid())
+  receiptId        String
+  receipt          Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  itemId           String
+  item             Item    @relation(fields: [itemId], references: [id])
+  expectedQuantity Int
+  receivedQuantity Int     @default(0)
+}
+
+// --- Deliveries (Outgoing) ---
+model Delivery {
+  id          String          @id @default(cuid())
+  reference   String          @unique
+  destination String
+  scheduledAt DateTime?
+  status      OperationStatus @default(DRAFT)
+  notes       String?
+  createdById String
+  createdBy   User            @relation(fields: [createdById], references: [id])
+  lines       DeliveryLine[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model DeliveryLine {
+  id         String   @id @default(cuid())
+  deliveryId String
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  itemId     String
+  item       Item     @relation(fields: [itemId], references: [id])
+  quantity   Int
+}
+
+// --- Audit Trail ---
+model Transaction {
+  id             String          @id @default(cuid())
+  reference      String
+  itemId         String
+  item           Item            @relation(fields: [itemId], references: [id])
+  type           TransactionType
+  quantity       Int
+  fromLocationId String?
+  fromLocation   Location?       @relation("FromLocation", fields: [fromLocationId], references: [id])
+  toLocationId   String?
+  toLocation     Location?       @relation("ToLocation", fields: [toLocationId], references: [id])
+  notes          String?
+  createdAt      DateTime        @default(now())
 }
