@@ -139,7 +139,7 @@ export default function Hero3D() {
       </div>
 
       {/* Bottom accent line */}
-      <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{
+      <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{
         background: 'linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #06b6d4 100%)'
       }} />
     </div>
