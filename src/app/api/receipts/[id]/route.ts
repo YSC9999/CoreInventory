@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { deleteReceiptRecord, getReceiptRecord, updateReceiptRecord } from '@/lib/receipt-records';
 
 // GET single receipt
 export async function GET(
@@ -11,30 +9,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const receipt = await prisma.receipt.findUnique({
-      where: { id },
-      include: {
-        lines: {
-          include: {
-            item: true,
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        warehouse: {
-          select: {
-            id: true,
-            name: true,
-            shortCode: true,
-          },
-        },
-      },
-    });
+    const receipt = await getReceiptRecord(id);
 
     if (!receipt) {
       return NextResponse.json(
@@ -63,43 +38,21 @@ export async function PUT(
     const body = await request.json();
     const { reference, supplier, scheduledAt, status, notes, lines } = body;
 
-    const receipt = await prisma.receipt.update({
-      where: { id },
-      data: {
-        ...(reference && { reference }),
-        ...(supplier && { supplier }),
-        ...(scheduledAt !== undefined && { scheduledAt: scheduledAt ? new Date(scheduledAt) : null }),
-        ...(status && { status }),
-        ...(notes !== undefined && { notes }),
-        ...(lines && {
-          lines: {
-            deleteMany: {},
-            create: lines,
-          },
-        }),
-      },
-      include: {
-        lines: {
-          include: {
-            item: true,
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        warehouse: {
-          select: {
-            id: true,
-            name: true,
-            shortCode: true,
-          },
-        },
-      },
+    const receipt = await updateReceiptRecord(id, {
+      ...(reference && { reference }),
+      ...(supplier && { supplier }),
+      ...(scheduledAt !== undefined && { scheduledAt: scheduledAt ? new Date(scheduledAt) : null }),
+      ...(status && { status }),
+      ...(notes !== undefined && { notes }),
+      ...(lines && { lines }),
     });
+
+    if (!receipt) {
+      return NextResponse.json(
+        { error: 'Receipt not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(receipt);
   } catch (error) {
@@ -119,9 +72,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    await prisma.receipt.delete({
-      where: { id },
-    });
+    await deleteReceiptRecord(id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

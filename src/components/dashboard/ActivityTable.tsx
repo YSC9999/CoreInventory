@@ -1,13 +1,26 @@
 "use client";
 
-import { activityData } from "@/lib/mock-data";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { useGsapStagger } from "@/hooks/use-gsap-stagger";
 
-export function ActivityTable() {
-  const tableRef = useGsapStagger(".activity-row");
+type ActivityEntry = {
+  id: string;
+  time: string;
+  product: string;
+  movement: "RECEIPT" | "DELIVERY" | "TRANSFER" | "ADJUSTMENT";
+  from: string;
+  to: string;
+  qty: number;
+};
+
+type ActivityTableProps = {
+  data?: ActivityEntry[];
+};
+
+export function ActivityTable({ data = [] }: ActivityTableProps) {
+  const tableRef = useGsapStagger(".activity-row", data);
 
   const getMovementIcon = (type: string) => {
     switch (type) {
@@ -21,6 +34,7 @@ export function ActivityTable() {
     switch (type) {
       case 'RECEIPT': return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">IN</Badge>;
       case 'DELIVERY': return <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/20">OUT</Badge>;
+      case 'ADJUSTMENT': return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">ADJ</Badge>;
       default: return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20">TRF</Badge>;
     }
   };
@@ -33,7 +47,7 @@ export function ActivityTable() {
           <p className="text-sm text-muted-foreground">Latest inventory movements</p>
         </div>
       </div>
-      
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader className="bg-secondary/30">
@@ -46,7 +60,7 @@ export function ActivityTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {activityData.map((activity) => (
+            {data.map((activity) => (
               <TableRow key={activity.id} className="activity-row border-border hover:bg-primary/5 transition-colors">
                 <TableCell className="text-muted-foreground whitespace-nowrap py-3">{activity.time}</TableCell>
                 <TableCell className="font-medium text-foreground">{activity.product}</TableCell>
@@ -62,6 +76,13 @@ export function ActivityTable() {
                 <TableCell className="text-right font-mono font-medium">{activity.qty}</TableCell>
               </TableRow>
             ))}
+            {!data.length ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  No activity yet.
+                </TableCell>
+              </TableRow>
+            ) : null}
           </TableBody>
         </Table>
       </div>
