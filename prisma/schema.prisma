@@ -7,11 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- Enums (as String for SQLite compatibility) ---
-// enum Role { ADMIN, USER }
-// enum TransactionType { IN, OUT, TRANSFER, ADJUSTMENT }
-// enum OperationStatus { DRAFT, WAITING, READY, DONE, CANCELED }
-// enum UnitOfMeasure { UNIT, KG, LITRE, BOX, METRE }
+// --- Enums (PostgreSQL native) ---
+enum Role {
+  SUPER_ADMIN
+  MANAGER
+  WAREHOUSE_STAFF
+}
+
+enum TransactionType {
+  IN
+  OUT
+  TRANSFER
+  ADJUSTMENT
+}
+
+enum OperationStatus {
+  DRAFT
+  WAITING
+  READY
+  DONE
+  CANCELED
+}
+
+enum UnitOfMeasure {
+  UNIT
+  KG
+  LITRE
+  BOX
+  METRE
+}
 
 // --- Organization & Users ---
 model Organization {
@@ -22,6 +46,9 @@ model Organization {
   warehouses Warehouse[]
   items      Item[]
   categories Category[]
+  receipts   Receipt[]
+  deliveries Delivery[]
+  transactions Transaction[]
   createdAt  DateTime    @default(now())
 }
 
@@ -30,14 +57,17 @@ model User {
   email          String       @unique
   name           String?
   password       String
-  role           String       @default("WAREHOUSE_STAFF") // SUPER_ADMIN, MANAGER, WAREHOUSE_STAFF
+  role           Role         @default(WAREHOUSE_STAFF)
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   verified       Boolean      @default(false)
-  receipts       Receipt[]
-  deliveries     Delivery[]
+  receipts       Receipt[]    @relation("createdBy")
+  deliveries     Delivery[]   @relation("createdBy")
+  transactions   Transaction[] @relation("createdBy")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  
+  @@index([organizationId])
 }
 
 // --- Warehouse Infrastructure ---
@@ -47,12 +77,14 @@ model Warehouse {
   shortCode      String
   address        String?
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   locations      Location[]
   receipts       Receipt[]
+  deliveries     Delivery[]
   createdAt      DateTime     @default(now())
 
   @@unique([shortCode, organizationId])
+  @@index([organizationId])
 }
 
 model Location {
@@ -60,12 +92,13 @@ model Location {
   name        String
   shortCode   String
   warehouseId String
-  warehouse   Warehouse     @relation(fields: [warehouseId], references: [id])
+  warehouse   Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   stocks      Stock[]
   fromTxns    Transaction[] @relation("FromLocation")
   toTxns      Transaction[] @relation("ToLocation")
 
   @@unique([shortCode, warehouseId])
+  @@index([warehouseId])
 }
 
 // --- Products & Inventory ---
@@ -73,10 +106,11 @@ model Category {
   id             String       @id @default(cuid())
   name           String
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   items          Item[]
 
   @@unique([name, organizationId])
+  @@index([organizationId])
 }
 
 model Item {
@@ -84,12 +118,12 @@ model Item {
   sku            String
   name           String
   description    String?
-  uom            String         @default("UNIT") // UNIT, KG, LITRE, BOX, METRE
+  uom            UnitOfMeasure  @default(UNIT)
   minStock       Int            @default(0)
   categoryId     String?
   category       Category?      @relation(fields: [categoryId], references: [id])
   organizationId String
-  organization   Organization   @relation(fields: [organizationId], references: [id])
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   stocks         Stock[]
   receiptLines   ReceiptLine[]
   deliveryLines  DeliveryLine[]
@@ -98,35 +132,42 @@ model Item {
   updatedAt      DateTime       @updatedAt
 
   @@unique([sku, organizationId])
+  @@index([organizationId])
+  @@index([categoryId])
 }
 
 model Stock {
   id         String   @id @default(cuid())
   itemId     String
-  item       Item     @relation(fields: [itemId], references: [id])
+  item       Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
   locationId String
-  location   Location @relation(fields: [locationId], references: [id])
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
   quantity   Int      @default(0)
 
   @@unique([itemId, locationId])
+  @@index([itemId])
+  @@index([locationId])
 }
 
 // --- Receipts (Incoming) ---
 model Receipt {
-  id          String          @id @default(cuid())
-  reference   String          @unique
-  supplier    String
-  type        String          @default("IN") // IN or OUT
-  warehouseId String?
-  warehouse   Warehouse?      @relation(fields: [warehouseId], references: [id])
-  scheduledAt DateTime?
-  status      String          @default("DRAFT") // DRAFT, WAITING, READY, DONE, CANCELED
-  notes       String?
-  createdById String
-  createdBy   User            @relation(fields: [createdById], references: [id])
-  lines       ReceiptLine[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  referenceNumber String          @unique
+  warehouseId     String
+  warehouse       Warehouse       @relation(fields: [warehouseId], references: [id])
+  organizationId  String
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  status          OperationStatus @default(DRAFT)
+  notes           String?
+  createdById     String
+  createdBy       User            @relation("createdBy", fields: [createdById], references: [id])
+  lines           ReceiptLine[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([organizationId])
+  @@index([warehouseId])
+  @@index([createdById])
 }
 
 model ReceiptLine {
@@ -135,23 +176,32 @@ model ReceiptLine {
   receipt          Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   itemId           String
   item             Item    @relation(fields: [itemId], references: [id])
-  expectedQuantity Int
-  receivedQuantity Int     @default(0)
+  quantity         Int
+  costPrice        Float?
+
+  @@index([receiptId])
+  @@index([itemId])
 }
 
 // --- Deliveries (Outgoing) ---
 model Delivery {
-  id          String          @id @default(cuid())
-  reference   String          @unique
-  destination String
-  scheduledAt DateTime?
-  status      String          @default("DRAFT") // DRAFT, WAITING, READY, DONE, CANCELED
-  notes       String?
-  createdById String
-  createdBy   User            @relation(fields: [createdById], references: [id])
-  lines       DeliveryLine[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  referenceNumber String          @unique
+  warehouseId     String
+  warehouse       Warehouse       @relation(fields: [warehouseId], references: [id])
+  organizationId  String
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  status          OperationStatus @default(DRAFT)
+  notes           String?
+  createdById     String
+  createdBy       User            @relation("createdBy", fields: [createdById], references: [id])
+  lines           DeliveryLine[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([organizationId])
+  @@index([warehouseId])
+  @@index([createdById])
 }
 
 model DeliveryLine {
@@ -161,20 +211,33 @@ model DeliveryLine {
   itemId     String
   item       Item     @relation(fields: [itemId], references: [id])
   quantity   Int
+
+  @@index([deliveryId])
+  @@index([itemId])
 }
 
 // --- Audit Trail ---
 model Transaction {
-  id             String          @id @default(cuid())
-  reference      String
+  id             String           @id @default(cuid())
   itemId         String
-  item           Item            @relation(fields: [itemId], references: [id])
-  type           String // IN, OUT, TRANSFER, ADJUSTMENT
+  item           Item             @relation(fields: [itemId], references: [id])
+  type           TransactionType
   quantity       Int
   fromLocationId String?
-  fromLocation   Location?       @relation("FromLocation", fields: [fromLocationId], references: [id])
+  fromLocation   Location?        @relation("FromLocation", fields: [fromLocationId], references: [id])
   toLocationId   String?
-  toLocation     Location?       @relation("ToLocation", fields: [toLocationId], references: [id])
+  toLocation     Location?        @relation("ToLocation", fields: [toLocationId], references: [id])
   notes          String?
-  createdAt      DateTime        @default(now())
+  createdById    String
+  createdBy      User             @relation("createdBy", fields: [createdById], references: [id])
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now())
+
+  @@index([organizationId])
+  @@index([itemId])
+  @@index([fromLocationId])
+  @@index([toLocationId])
+  @@index([createdById])
+  @@index([createdAt])
 }
