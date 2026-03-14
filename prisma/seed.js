@@ -77,6 +77,140 @@ async function main() {
 
   console.log(`✅ Category: ${category.name}`);
 
+  // Create sample items
+  const items = await Promise.all([
+    db.item.upsert({
+      where: { sku_organizationId: { sku: 'SKU-A001', organizationId: org.id } },
+      update: {},
+      create: {
+        sku: 'SKU-A001',
+        name: 'Quantum Processor Node',
+        description: 'Advanced quantum processing unit',
+        categoryId: category.id,
+        organizationId: org.id,
+      },
+    }),
+    db.item.upsert({
+      where: { sku_organizationId: { sku: 'SKU-B002', organizationId: org.id } },
+      update: {},
+      create: {
+        sku: 'SKU-B002',
+        name: 'Plasma Conduit Tube',
+        description: 'High-efficiency plasma conduit',
+        categoryId: category.id,
+        organizationId: org.id,
+      },
+    }),
+  ]);
+
+  console.log(`✅ Items created: ${items.length}`);
+
+  // Create sample receipts
+  const receipts = await Promise.all([
+    db.receipt.upsert({
+      where: { reference: 'RC-2000' },
+      update: {},
+      create: {
+        reference: 'RC-2000',
+        supplier: 'OmniCorp',
+        status: 'DONE',
+        createdById: admin.id,
+        notes: 'First batch delivery',
+        lines: {
+          create: [
+            {
+              itemId: items[0].id,
+              expectedQuantity: 50,
+              receivedQuantity: 50,
+            },
+          ],
+        },
+      },
+    }),
+    db.receipt.upsert({
+      where: { reference: 'RC-2001' },
+      update: {},
+      create: {
+        reference: 'RC-2001',
+        supplier: 'CyberDyne',
+        status: 'READY',
+        createdById: admin.id,
+        notes: 'Electronics shipment',
+        lines: {
+          create: [
+            {
+              itemId: items[1].id,
+              expectedQuantity: 30,
+              receivedQuantity: 0,
+            },
+          ],
+        },
+      },
+    }),
+    db.receipt.upsert({
+      where: { reference: 'RC-2002' },
+      update: {},
+      create: {
+        reference: 'RC-2002',
+        supplier: 'Weyland-Yutani',
+        status: 'WAITING',
+        createdById: admin.id,
+        notes: 'Pending warehouse inspection',
+        lines: {
+          create: [
+            {
+              itemId: items[0].id,
+              expectedQuantity: 25,
+              receivedQuantity: 0,
+            },
+          ],
+        },
+      },
+    }),
+    db.receipt.upsert({
+      where: { reference: 'RC-2003' },
+      update: {},
+      create: {
+        reference: 'RC-2003',
+        supplier: 'Stark Industries',
+        status: 'DONE',
+        createdById: admin.id,
+        notes: 'Mechanical parts',
+        lines: {
+          create: [
+            {
+              itemId: items[1].id,
+              expectedQuantity: 40,
+              receivedQuantity: 40,
+            },
+          ],
+        },
+      },
+    }),
+    db.receipt.upsert({
+      where: { reference: 'RC-2004' },
+      update: {},
+      create: {
+        reference: 'RC-2004',
+        supplier: 'OmniCorp',
+        status: 'DRAFT',
+        createdById: admin.id,
+        notes: 'Draft order',
+        lines: {
+          create: [
+            {
+              itemId: items[0].id,
+              expectedQuantity: 15,
+              receivedQuantity: 0,
+            },
+          ],
+        },
+      },
+    }),
+  ]);
+
+  console.log(`✅ Sample Receipts created: ${receipts.length}`);
+
   console.log('✨ Seed completed!');
 }
 
