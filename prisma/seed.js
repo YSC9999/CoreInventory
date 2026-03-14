@@ -18,7 +18,24 @@ async function main() {
 
   console.log(`✅ Organization: ${org.name}`);
 
-  // Create admin user
+  // Create superadmin user
+  const superadminPassword = await bcrypt.hash('Vamsi@08', 10);
+  const superadmin = await db.user.upsert({
+    where: { email: 'baluduvamsi2000@gmail.com' },
+    update: {},
+    create: {
+      email: 'baluduvamsi2000@gmail.com',
+      name: 'Vamsi Baludu',
+      password: superadminPassword,
+      role: 'ADMIN',
+      organizationId: org.id,
+      verified: true,
+    },
+  });
+
+  console.log(`✅ Superadmin user: ${superadmin.email}`);
+
+  // Create additional admin user
   const adminPassword = await bcrypt.hash('admin123', 10);
   const admin = await db.user.upsert({
     where: { email: 'admin@core.dev' },

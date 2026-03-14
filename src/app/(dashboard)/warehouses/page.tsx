@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef } from "react";
 import { warehousesData } from "@/lib/mock-data";
@@ -95,8 +95,8 @@ export default function Warehouses() {
                   />
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground mt-2 font-mono">
-                  <span>{wh.used.toLocaleString()} units</span>
-                  <span>{wh.capacity.toLocaleString()} max</span>
+                  <span>{wh.used.toLocaleString('en-US')} units</span>
+                  <span>{wh.capacity.toLocaleString('en-US')} max</span>
                 </div>
               </div>
             </div>

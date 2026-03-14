@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { gsap } from "@/lib/gsap-setup";
 import { Eye, EyeOff, Package, ArrowRight, Zap, Shield, BarChart3 } from "lucide-react";
+import { logIn } from "@/actions/auth.actions";
+import { toast } from "sonner";
 
 export default function Login() {
   const router = useRouter();
@@ -18,6 +20,10 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [buttonHovered, setButtonHovered] = useState(false);
+  const getBorderStyle = (fieldName: string) => focusedField === fieldName ? "1.5px solid #6366f1" : "1.5px solid #e5e7eb";
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -115,11 +121,36 @@ export default function Login() {
     };
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
     gsap.to(formCardRef.current, { scale: 0.98, duration: 0.1, yoyo: true, repeat: 1 });
-    setTimeout(() => { setLoading(false); router.push("/inventory"); }, 1200)
+    
+    try {
+      console.log("Attempting login with:", { email, password: password.length + " chars" });
+      const result = await logIn({ email, password });
+      console.log("Login result:", result);
+      
+      if (result.success) {
+        toast.success("Login successful!");
+        // Small delay for animation then redirect
+        setTimeout(() => {
+          console.log("Redirecting to inventory...");
+          router.push("/inventory");
+        }, 300);
+      } else {
+        console.log("Login failed:", result.error);
+        setError(result.error || "Login failed");
+        toast.error(result.error || "Login failed");
+        setLoading(false);
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err.message || "An error occurred");
+      toast.error(err.message || "An error occurred");
+      setLoading(false);
+    }
   };
 
   const cubeColors = [
@@ -184,24 +215,8 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Stats row */}
-        <div className="auth-left-item flex gap-6 mb-10 relative z-10">
-          {[
-            { label: "Products tracked", target: 12400 },
-            { label: "Daily transactions", target: 3800 },
-            { label: "Warehouses", target: 47 },
-          ].map((s) => (
-            <div key={s.label}>
-              <div className="text-2xl font-display font-bold text-white">
-                <span className="stat-num" data-target={s.target}>0</span>+
-              </div>
-              <div className="text-xs mt-0.5" style={{ color: "rgba(165,180,252,0.6)" }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
         {/* Feature pills */}
-        <div className="auth-left-item flex flex-col gap-3 relative z-10">
+        <div className="auth-left-item flex flex-col gap-3 relative z-10 mb-10">
           {[
             { icon: Zap, text: "Real-time stock sync across all warehouses" },
             { icon: Shield, text: "Role-based access with audit trail" },
@@ -236,15 +251,20 @@ export default function Login() {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
+              {error && (
+                <div className="p-3 rounded-lg text-sm" style={{ background: "#fee2e2", border: "1px solid #fecaca", color: "#991b1b" }}>
+                  {error}
+                </div>
+              )}
               <div className="form-field">
                 <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>Email address</label>
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)} required
                   placeholder="you@company.com"
                   className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-                  style={{ background: "#f8f9ff", border: "1.5px solid #e5e7eb", color: "#1f2937" }}
-                  onFocus={e => (e.target.style.border = "1.5px solid #6366f1")}
-                  onBlur={e => (e.target.style.border = "1.5px solid #e5e7eb")}
+                  style={{ background: "#f8f9ff", border: getBorderStyle("email"), color: "#1f2937" }}
+                  onFocus={() => setFocusedField("email")}
+                  onBlur={() => setFocusedField(null)}
                 />
               </div>
 
@@ -258,9 +278,9 @@ export default function Login() {
                     type={showPass ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required
                     placeholder="••••••••"
                     className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all pr-12"
-                    style={{ background: "#f8f9ff", border: "1.5px solid #e5e7eb", color: "#1f2937" }}
-                    onFocus={e => (e.target.style.border = "1.5px solid #6366f1")}
-                    onBlur={e => (e.target.style.border = "1.5px solid #e5e7eb")}
+                    style={{ background: "#f8f9ff", border: getBorderStyle("password"), color: "#1f2937" }}
+                    onFocus={() => setFocusedField("password")}
+                    onBlur={() => setFocusedField(null)}
                   />
                   <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "#9ca3af" }}>
                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -276,9 +296,9 @@ export default function Login() {
               <div className="form-field pt-1">
                 <button type="submit" disabled={loading}
                   className="w-full py-3 px-6 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all"
-                  style={{ background: loading ? "#818cf8" : "linear-gradient(135deg,#6366f1,#a855f7)", boxShadow: "0 8px 24px rgba(99,102,241,0.4)" }}
-                  onMouseEnter={e => !loading && ((e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)")}
-                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)")}
+                  style={{ background: loading ? "#818cf8" : "linear-gradient(135deg,#6366f1,#a855f7)", boxShadow: "0 8px 24px rgba(99,102,241,0.4)", transform: buttonHovered && !loading ? "translateY(-1px)" : "translateY(0)" }}
+                  onMouseEnter={() => !loading && setButtonHovered(true)}
+                  onMouseLeave={() => setButtonHovered(false)}
                 >
                   {loading ? (
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" fill="none" strokeDasharray="30" strokeDashoffset="10" /></svg>
