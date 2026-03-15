@@ -197,13 +197,10 @@ erDiagram
     DELIVERY }o--|| WAREHOUSE : shipped_from
     DELIVERY }o--|| USER : created_by
 
-    LOCATION ||--o{ TRANSACTION : from
-    LOCATION ||--o{ TRANSACTION : to
+    LOCATION ||--o{ TRANSACTION : has_transactions
 
     TRANSACTION }o--|| ITEM : moves
     TRANSACTION }o--|| USER : recorded_by
-    TRANSACTION }o--|| LOCATION : from_location
-    TRANSACTION }o--|| LOCATION : to_location
 
     USER }o--|| ORGANIZATION : belongs_to
 ```
